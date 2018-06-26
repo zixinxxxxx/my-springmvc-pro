@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="keywords" content="" />
+	<meta name="description" content="" />
+	<title>覆盖率详情</title>
+	<link rel="stylesheet" type="text/css"  href="/static/bootstrap/css/bootstrap.css"/>
+	<link rel="stylesheet" type="text/css"  href="/static/bootstrap/css/bootstrap-table.min.css"/>
+	<link rel="stylesheet" type="text/css"  href="/static/css/jquery-confirm.min.css"/>
+	<link rel="stylesheet" type="text/css"  href="/static/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css"/>
+	<style type="text/css">
+		.table > thead > tr >th{ 
+			vertical-align:middle;
+			font-size:14px;
+			line-height:50px;
+			text-align:center
+		}
+		.table > tbody > tr >td{ 
+			text-align:center;
+			vertical-align:middle;
+		}
+	</style>
+</head>
+<body>
+<div id="main" style="height:400px"></div>
+<div style="padding: 0px 50px;">
+        <div style="margin-top: 50px;">
+            <table id="table"></table>
+        </div>
+
+<!-- 模态框（Modal） -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title" id="myModalLabel">请您勾选哪些包需要关注测试覆盖率，点击【关注】按钮</h4>
+            </div>
+            <div class="checkbox" id="checkbox1">
+            	<!-- 在这个里面用代码生成chekbox -->
+			</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="setCare()">关注</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal -->
+</div>
+</div>
+	<script type="text/javascript" src="/static/jquery/jquery-3.1.1.min.js"></script>
+	<script type="text/javascript" src="/static/bootstrap/js/bootstrap.js"></script>
+	<script type="text/javascript" src="/static/bootstrap/js/bootstrap-table.min.js"></script>
+	<script type="text/javascript" src="/static/bootstrap/js/bootstrap-table-zh-CN.min.js"></script>
+	<script type="text/javascript" src="/static/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
+    <script type="text/javascript" src="/static/bootstrap-datetimepicker/js/locales/zh-CN.js" charset="UTF-8"></script>
+	<script type="text/javascript" src="/static/js/jquery-confirm.min.js"></script>
+	<script type="text/javascript" src="/static/js/jquery.form.min.js"></script>
+	
+	<script src="http://echarts.baidu.com/build/dist/echarts.js"></script>
+	<script type="text/javascript">
+	// 路径配置
+    require.config({
+        paths: {
+            echarts: 'http://echarts.baidu.com/build/dist'
+        }
+    });
+    // 使用
+    require(
+        [
+            'echarts',
+            'echarts/chart/line', // 使用柱状图就加载bar模块，按需加载
+        ],
+        function (ec) {
+            // 基于准备好的dom，初始化echarts图表
+            var myChart = ec.init(document.getElementById('main')); 
+            var fugailv = "覆盖率";
+
+            var option = {
+            	title : {
+            	    text: "                  集群"+getclusterName()+"("+getServerIp()+")"+"的测试覆盖率",
+            	    subtext: '',
+            	        textStyle:{    //图例文字的样式
+            	            color:'#333',
+            	            fontSize:15
+            	        }
+            	},
+                tooltip: {
+                    show: true
+                },
+                legend: {
+                    data:[fugailv],
+                },
+                xAxis : [
+                    {
+                        type : 'category',
+                        data : ["1","2","3","4","5","6","7","8","9","10"]
+                    }
+                ],
+                yAxis : [
+                    {
+                        type : 'value',
+                            axisLabel : {
+                                formatter: '{value} %'
+                            }
+                    }
+                ],
+                series : [
+                    {
+                        "name":"覆盖率",
+                        "type":"line",
+                        "data":[]
+                    }
+                ]
+            };
+    
+            $.ajax({
+            	type:"GET",
+        		url:"/result/getChartData",
+        		data:{"clusterName":getclusterName(),"serverIp":getServerIp()},
+                dataType : "json",  
+                success:function(result){
+                	if(result){
+                		option.series[0].data=result;
+                	    myChart.setOption(option);
+                	}
+                }
+            });
+        }
+    );
+	function initTable() {
+        $('#table').bootstrapTable('destroy');
+        $('#table').bootstrapTable({
+                cache: false,
+                pageList: [5, 10, 15],
+                pagination: true,
+                pageNumber: 1,
+                pageSize: 5,
+                sidePagination: 'client',
+                queryParamsType: 'undefined',
+                url: '/result/getData'+'?clusterName='+getclusterName()+'&serverIp='+getServerIp() ,
+                columns: [{
+                    field: 'JENKINSBUILDNUMBER',
+                    title: 'Jenkins构建号',
+                }, {
+                    field: 'BRANCHNANE',
+                    title: '分支版本'
+                }, {
+                    field: 'FTPADDRESS',
+                    title: 'FTP地址'
+                }, {
+                    field: 'COVERAGEPOINT',
+                    title: '测试覆盖率'
+                }, {
+                    field: 'CARE',
+                    title: '关注'
+                }, {
+                    field: 'OPERATION',
+                    title: '操作'
+                }],
+                rowAttributes: function(row, index) {
+            		tmpLinkStart = '<a target="_blank" href="$reportUrl/jacocoreport/'+getServerIp2()+'/'+getclusterName()+'/'+row.BRANCHNANE+"-"+row.JENKINSBUILDNUMBER+'/jacocoreport/';
+            		row.OPERATION='<a target="_blank" onclick="getCheckedData()">添加关注    </a><br>'
+                    	+'<a target="_blank" href="$reportUrl/jacocoreport/'+getServerIp2()+'/'+getclusterName()+'/'+row.BRANCHNANE+"-"+row.JENKINSBUILDNUMBER+'/jacocoreport/index.html'+'">  查看详情</a>';
+            		tmpCare = "";
+                	var strs= new Array(); //定义一数组 
+                	if(row.CARE!=null){
+                		strs=row.CARE.split(","); //字符分割 
+                    	for (i=0;i<strs.length ;i++ ) 
+                    	{ 
+                    		tmpLinkEnd = 'index.html'+'">'+ strs[i]+'</a>';
+                    		tmp=tmpLinkStart + strs[i] + "/"+tmpLinkEnd+"<br/>"
+                    		tmpCare=tmpCare+tmp;
+                    	} 
+                    	row.CARE=tmpCare;
+                	}else{
+                		row.CARE="";
+                	}
+                	
+                	return row;
+                } 
+            });
+		}
+	    $(document).ready(function () { 
+	        initTable();  
+	    }); 
+	    function getclusterName(){
+	    	var urlAll = window.location.href;
+			url = urlAll.split("?");
+			param1 = url[1].split("=");
+			clusterName = param1[1].split("&");
+			clusterName = clusterName[0];
+			return clusterName;
+	    }
+	    function getServerIp(){
+	        var urlAll = window.location.href;
+			url = urlAll.split("?");
+			param2 = url[1].split("%");
+			serverIp = param2[0].split("&");
+			serverIp = serverIp[1].split("=");
+			return serverIp[1];
+	    }
+	    function getServerIp2(){
+	        var urlAll = window.location.href;
+			url = urlAll.split("?");
+			param2 = url[1].split("%");
+			serverIp = param2[0].split("&");
+			serverIp = serverIp[1].split("=");
+			
+			result = serverIp[1]
+			result = result.replace(/\./g, '_');
+			return result;
+	    }
+	    
+			var versionNo = "";
+	    	$('body').on('click','a', function(){
+	    		if($.trim($(this).text())=="查看详情"){
+		    		jenkinsNo = $(this).parents("tr").children("td:nth-child(1)").text();
+		    		branchNo = $(this).parents("tr").children("td:nth-child(2)").text();
+		    		versionNo = branchNo+"-"+jenkinsNo;
+		    		
+			    	$("#checkbox1").empty();
+			    	$('body').unbind();
+	    		} 
+	    	}); 
+	    
+	    function getVersion(){
+	    
+
+	    	return versionNo;
+	    }
+
+	    function setCare(){
+	    	versionNo = ($("#checkbox1").attr("name"));
+    	    checkedPackages = "";
+    		$("input:checkbox:checked").each(function(index,item){ 
+    		    checkedPackages = checkedPackages+$(this).val()+",";
+    		}); 
+            $.ajax({
+            	type:"GET",
+        		url:"result/setCare",
+        		data:{"clusterName":getclusterName(),"serverIp":getServerIp(),"checkedPackages":checkedPackages,"versionNo":versionNo},
+                dataType : "json",  
+                success:function(result){
+                	if(result){
+                	    $("#table").bootstrapTable('refresh');
+                	    window.location.reload();
+                	}
+                }
+            });
+	    }
+	    
+	    function getCheckedData(){
+	    	$('body').on('click','a', function(){
+	    		jenkinsNo = $(this).parents("tr").children("td:nth-child(1)").text();
+	    		branchNo = $(this).parents("tr").children("td:nth-child(2)").text();
+	    		versionNo = branchNo+"-"+jenkinsNo;
+	    		StrPackages=$(this).parents("tr").children("td:nth-child(5)").text();
+		    	$("#checkbox1").empty();
+		    	$('body').unbind();
+		    	$('table').unbind();
+	            $.ajax({
+	            	type:"GET",
+	        		url:"result/getCare",
+	        		data:{"clusterName":getclusterName(),"serverIp":getServerIp(),"versionNo":versionNo},
+	                dataType : "json",  
+	                success:function(result){
+	                	if(result){
+	                		$.each(result, function(index, item){
+	                			
+	                			if(StrPackages.indexOf(item) >= 0){
+		                 		    $("#checkbox1").append('<label ><input type="checkbox" checked="true" value="'+item+'">'+item+'</label></br>');
+	                			}else{
+		                 		    $("#checkbox1").append('<label ><input type="checkbox" value="'+item+'">'+item+'</label></br>');
+	                			}
+	                		 });
+	                		$("#checkbox1").attr("name", versionNo);
+	                		$('#myModal').modal('show');
+	                	}
+	                }
+	            });
+	    	});
+	    	//window.location.reload();
+	    }
+	</script>
+</body>
+</html>

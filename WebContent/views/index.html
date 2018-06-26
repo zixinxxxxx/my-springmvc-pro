@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="keywords" content="" />
+	<meta name="description" content="" />
+	<title>代码覆盖率平台</title>
+	<link rel="stylesheet" type="text/css"  href="/static/bootstrap/css/bootstrap.css"/>
+	<link rel="stylesheet" type="text/css"  href="/static/bootstrap/css/bootstrap-table.min.css"/>
+	<link rel="stylesheet" type="text/css"  href="/static/css/jquery-confirm.min.css"/>
+	<link rel="stylesheet" type="text/css"  href="/static/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css"/>
+	<style type="text/css">
+		.table > thead > tr >th{ 
+			vertical-align:middle;
+			font-size:14px;
+			line-height:50px;
+			text-align:center;
+			margin-top:5px;
+		}
+		.table > tbody > tr >td{ 
+			text-align:center;
+			vertical-align:middle;
+		}
+	</style>
+</head>
+<body>
+<div id="main" style="height:50px"></div>
+<div style="padding: 0px 50px;">
+        <div style="margin-top: 10px;">
+            <table id="table">
+            </table>
+        </div>
+
+
+
+
+</div>
+	<script type="text/javascript" src="/static/jquery/jquery-3.1.1.min.js"></script>
+	<script type="text/javascript" src="/static/bootstrap/js/bootstrap.js"></script>
+	<script type="text/javascript" src="/static/bootstrap/js/bootstrap-table.min.js"></script>
+	<script type="text/javascript" src="/static/bootstrap/js/bootstrap-table-zh-CN.min.js"></script>
+	<script type="text/javascript" src="/static/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
+    <script type="text/javascript" src="/static/bootstrap-datetimepicker/js/locales/zh-CN.js" charset="UTF-8"></script>
+	<script type="text/javascript" src="/static/js/jquery-confirm.min.js"></script>
+	<script type="text/javascript" src="/static/js/jquery.form.min.js"></script>
+	
+	<script src="http://echarts.baidu.com/build/dist/echarts.js"></script>
+	<script type="text/javascript">
+	$(".form_datetime").datetimepicker({
+		 format: "yyyy-mm-dd",
+		 autoclose: true,
+		 todayBtn: true,
+		 todayHighlight: true,
+		 showMeridian: true,
+		 initialDate: new Date(),
+		 pickerPosition: "bottom-left",
+		 language: 'zh-CN',//中文，需要引用zh-CN.js包
+		 startView: 2,//月视图
+		 minView: 2//日期时间选择器所能够提供的最精确的时间选择视图
+		 }); 
+	function initTable() {
+		var thisURL = document.URL; 
+		//$('#table').style.position="absolute";
+		//$('#table').style.top="10px";
+        $('#table').bootstrapTable('destroy');
+        $('#table').bootstrapTable({
+                cache: false,
+                pageList: [5, 10, 15],
+                pagination: true,
+                pageNumber: 1,
+                pageSize: 10,
+                search: true, 
+                //strictSearch: true,
+                showRefresh: true,
+                sidePagination: 'client',
+                queryParamsType: 'undefined',
+                sortable: true, //是否启用排序 
+                sortName : 'updata_time',
+                sortOrder : 'desc',
+                url: '/index/getIndexData' ,
+                columns: [{
+                    field: 'server_name',
+                    title: '服务名称',
+                }, {
+                    field: 'server_ip',
+                    title: '服务器ip'
+                }, {
+                    field: 'server_port',
+                    title: '端口'
+                }, {
+                    field: 'status',
+                    title: '状态'
+                }, {
+                    field: 'report',
+                    title: '报告'
+                }, {
+                    field: 'operation',
+                    title: '操作'
+                }, {
+                    field: 'updata_time',
+                    title: '更新时间'
+                }, {
+                    field: 'start_location',
+                    title: '启动文件'
+                }],
+                rowAttributes: function(row, index) {
+                        //console.log(row);
+                    
+                    if(row.status=="拉取中"){                		
+    					row.operation='<font color="#A9A9A9">开启</font>'
+    	                	+'<a target="_blank" onclick="stop()">  关闭</a>'
+    	                	+'<a target="_blank" >  重置</a>';
+                	}else{
+                		
+    					row.operation='<a target="_blank">开启    </a>'
+    	                	+ '<font color="#A9A9A9">关闭 </font>'
+    	                	+'<a target="_blank" >  重置</a>';
+                	}
+                        
+                     return row;
+                } 
+            });
+		}
+	    $(document).ready(function () {          
+	        initTable();  
+	        bind();
+	    }); 
+	    function occupy(){
+	    	clusterName = ($("#checkbox1").attr("clusterName"));
+	    	serverIp = ($("#checkbox2").attr("serverIp"));
+	    	occupyTime = $("#occupyTime").val();
+            $.ajax({
+            	type:"GET",
+        		url:"/index/occupyCluster",
+        		data:{"clusterName":clusterName,"serverIp":serverIp,"occupyTime":occupyTime},
+                dataType : "text",  
+                async : false,
+                success:function(result){
+                	if(result){
+                		if(result=="success"){
+                			alert("占用成功,可以点击开启了");
+                		}else if(result=="failed"){
+                			alert("占用失败");
+                		}
+                		
+                	}
+                }
+            });
+	    }
+	    function bind(){
+			$(table).on('click','a', function(){
+				var clusterName=$(this).parents("tr").children("td:nth-child(2)").text();
+				var serverIp=$(this).parents("tr").children("td:nth-child(3)").text();	
+				var status=$(this).parents("tr").children("td:nth-child(5)");
+				var start=$(this).parents("tr").children("td:nth-child(7)").children("a:nth-child(1)");
+				var stop=$(this).parents("tr").children("td:nth-child(7)").children("a:nth-child(2)");
+				var reset=$(this).parents("tr").children("td:nth-child(7)").children("a:nth-child(3)");
+				var div=$(this).parents("tr").children("td:nth-child(7)")
+				
+				
+				whichButton = $(this).text();
+				$(this).attr("disabled", true);
+				if($.trim(whichButton)=="开启"){
+					$("#checkbox1").attr("clusterName", clusterName);
+					$("#checkbox2").attr("serverIp", serverIp);
+					status.text("处理中");
+					status.attr("style","color:red;");
+					div.empty();
+					div.append("<a >请稍后..</a>");
+					alert(status.text())
+					if(status.text()=="处理中"){
+			            $.ajax({
+			            	type:"GET",
+			        		url:"/index/startMonitor",
+			        		data:{"clusterName":clusterName,"serverIp":serverIp},
+			                dataType : "text",  
+			                async: false,
+			                success:function(result){
+			                	if(result){
+			                		if(result=="success"){
+			                			alert("启动成功！");
+			                			$("#table").bootstrapTable('refresh',{url:'index/getIndexData'});
+			                		}else if(result=="failed"){
+			                			alert("启动失败！");
+			                			$("#table").bootstrapTable('refresh');
+			                		}else if(result=="notOccupy"){
+			                			//alert("该集群还未占用，是否占用？");
+			                			//$('#myModal').modal({backdrop:"static",show:true})
+			                			//$('#myModal').modal('show');
+			                			$("#table").bootstrapTable('refresh');
+			                		}else if(result=="occupyByOther"){
+			                			alert("您的集群已被他人占用，请去tmp查看");
+			                			$("#table").bootstrapTable('refresh');
+			                		}
+			                	}
+			                }
+			            });
+					}
+		            $("#table").bootstrapTable('refresh');
+				}else if($.trim(whichButton) == "关闭"){
+					status.text("处理中");
+					status.attr("style","color:red;");
+					div.empty();
+					div.append("<a >请稍后..</a>");
+					alert(status.text())
+					if($.trim(status.text())=="处理中"){
+						$.ajax({
+			            	type:"GET",
+			        		url:"/index/stopMonitor",
+			        		data:{"clusterName":clusterName,"serverIp":serverIp},
+			                dataType : "text",  
+			                async: false,
+			                success:function(result){
+			                	if(result){
+			                		if(result=="success"){
+			                			alert("关闭成功！");
+			                			$("#table").bootstrapTable('refresh');
+			                		}else if(result=="failed"){
+			                			alert("关闭失败！");
+			                			$("#table").bootstrapTable('refresh');
+			                		}else if(result=="notOccupy"){
+			                			alert("该集群还未占用，是否占用？");
+			                			$("#table").bootstrapTable('refresh');
+			                		}else if(result=="occupyByOther"){
+			                			alert("您的集群已被他人占用，请去tmp查看");
+			                			$("#table").bootstrapTable('refresh');
+			                		}
+			                	}
+			                }
+			            });
+					}
+					$("#table").bootstrapTable('refresh');
+				}else if($.trim(whichButton) == "重置"){
+					status.text("处理中");
+					status.attr("style","color:red;");
+					div.empty();
+					div.append("<a >请稍后..</a>");
+		            $.ajax({
+		            	type:"GET",
+		        		url:"/index/resetMonitor",
+		        		data:{"clusterName":clusterName,"serverIp":serverIp},
+		                dataType : "text",  
+		                async: false,
+		                success:function(result){
+		                	if(result){
+		                		if(result=="success"){
+		                			alert("重置成功！");
+		                			$("#table").bootstrapTable('refresh');
+		                		}else if(result=="failed"){
+		                			alert("重置失败");
+		                			$("#table").bootstrapTable('refresh');
+		                		}else if(result=="occupyByOther"){
+		                			alert("您的集群已被他人占用，请去tmp查看");
+		                			$("#table").bootstrapTable('refresh');
+		                		}
+		                	}
+		                }
+		            });
+				}
+			});
+	    }
+	</script>
+</body>
+</html>
